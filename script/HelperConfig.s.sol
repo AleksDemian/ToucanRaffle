@@ -19,8 +19,7 @@ contract HelperConfig is Script {
         uint256 deployerKey;
     }
 
-    uint256 public DEFAULT_ANVIL_PRIVATE_KEY =
-        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    uint256 public DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     event HelperConfig__CreatedMockVRFCoordinator(address vrfCoordinator);
 
@@ -32,11 +31,7 @@ contract HelperConfig is Script {
         }
     }
 
-    function getMainnetEthConfig()
-        public
-        view
-        returns (NetworkConfig memory mainnetNetworkConfig)
-    {
+    function getMainnetEthConfig() public view returns (NetworkConfig memory mainnetNetworkConfig) {
         mainnetNetworkConfig = NetworkConfig({
             subscriptionId: 0, // If left as 0, our scripts will create one!
             gasLane: 0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805,
@@ -49,11 +44,7 @@ contract HelperConfig is Script {
         });
     }
 
-    function getSepoliaEthConfig()
-        public
-        view
-        returns (NetworkConfig memory sepoliaNetworkConfig)
-    {
+    function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
         sepoliaNetworkConfig = NetworkConfig({
             subscriptionId: 0, // If left as 0, our scripts will create one!
             gasLane: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
@@ -66,10 +57,7 @@ contract HelperConfig is Script {
         });
     }
 
-    function getOrCreateAnvilEthConfig()
-        public
-        returns (NetworkConfig memory anvilNetworkConfig)
-    {
+    function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilNetworkConfig) {
         // Check to see if we set an active network config
         if (activeNetworkConfig.vrfCoordinatorV2 != address(0)) {
             return activeNetworkConfig;
@@ -79,17 +67,12 @@ contract HelperConfig is Script {
         uint96 gasPriceLink = 1e9;
 
         vm.startBroadcast(DEFAULT_ANVIL_PRIVATE_KEY);
-        VRFCoordinatorV2Mock vrfCoordinatorV2Mock = new VRFCoordinatorV2Mock(
-            baseFee,
-            gasPriceLink
-        );
+        VRFCoordinatorV2Mock vrfCoordinatorV2Mock = new VRFCoordinatorV2Mock(baseFee, gasPriceLink);
 
         LinkToken link = new LinkToken();
         vm.stopBroadcast();
 
-        emit HelperConfig__CreatedMockVRFCoordinator(
-            address(vrfCoordinatorV2Mock)
-        );
+        emit HelperConfig__CreatedMockVRFCoordinator(address(vrfCoordinatorV2Mock));
 
         anvilNetworkConfig = NetworkConfig({
             subscriptionId: 0, // If left as 0, our scripts will create one!

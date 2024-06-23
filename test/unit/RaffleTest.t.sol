@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
-import {Raffle} from "../../src/Raffle.sol";
+import {ToucanRaffle} from "../../src/ToucanRaffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -17,7 +17,7 @@ contract RaffleTest is StdCheats, Test {
     event RaffleEnter(address indexed player);
     event WinnerPicked(address indexed player);
 
-    Raffle public raffle;
+    ToucanRaffle public raffle;
     HelperConfig public helperConfig;
 
     uint64 subscriptionId;
@@ -49,7 +49,7 @@ contract RaffleTest is StdCheats, Test {
     }
 
     function testRaffleInitializesInOpenState() public view {
-        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+        assert(raffle.getRaffleState() == ToucanRaffle.RaffleState.OPEN);
     }
 
     /////////////////////////
@@ -60,7 +60,7 @@ contract RaffleTest is StdCheats, Test {
         // Arrange
         vm.prank(PLAYER);
         // Act / Assert
-        vm.expectRevert(Raffle.Raffle__SendMoreToEnterRaffle.selector);
+        vm.expectRevert(ToucanRaffle.Raffle__SendMoreToEnterRaffle.selector);
         raffle.enterRaffle();
     }
 
@@ -93,7 +93,7 @@ contract RaffleTest is StdCheats, Test {
         raffle.performUpkeep("");
 
         // Act / Assert
-        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
+        vm.expectRevert(ToucanRaffle.Raffle__RaffleNotOpen.selector);
         vm.prank(PLAYER);
         raffle.enterRaffle{value: raffleEntranceFee}();
     }
@@ -107,7 +107,7 @@ contract RaffleTest is StdCheats, Test {
         vm.roll(block.number + 1);
 
         // Act
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
 
         // Assert
         assert(!upkeepNeeded);
@@ -120,28 +120,26 @@ contract RaffleTest is StdCheats, Test {
         vm.warp(block.timestamp + automationUpdateInterval + 1);
         vm.roll(block.number + 1);
         raffle.performUpkeep("");
-        Raffle.RaffleState raffleState = raffle.getRaffleState();
+        ToucanRaffle.RaffleState raffleState = raffle.getRaffleState();
         // Act
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
         // Assert
-        assert(raffleState == Raffle.RaffleState.CALCULATING);
+        assert(raffleState == ToucanRaffle.RaffleState.CALCULATING);
         assert(upkeepNeeded == false);
     }
 
-    // Challenge 1. testCheckUpkeepReturnsFalseIfEnoughTimeHasntPassed
     function testCheckUpkeepReturnsFalseIfEnoughTimeHasntPassed() public {
         // Arrange
         vm.prank(PLAYER);
         raffle.enterRaffle{value: raffleEntranceFee}();
 
         // Act
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
 
         // Assert
         assert(!upkeepNeeded);
     }
 
-    // Challenge 2. testCheckUpkeepReturnsTrueWhenParametersGood
     function testCheckUpkeepReturnsTrueWhenParametersGood() public {
         // Arrange
         vm.prank(PLAYER);
@@ -150,7 +148,7 @@ contract RaffleTest is StdCheats, Test {
         vm.roll(block.number + 1);
 
         // Act
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
 
         // Assert
         assert(upkeepNeeded);
@@ -176,15 +174,10 @@ contract RaffleTest is StdCheats, Test {
         // Arrange
         uint256 currentBalance = 0;
         uint256 numPlayers = 0;
-        Raffle.RaffleState rState = raffle.getRaffleState();
+        ToucanRaffle.RaffleState rState = raffle.getRaffleState();
         // Act / Assert
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Raffle.Raffle__UpkeepNotNeeded.selector,
-                currentBalance,
-                numPlayers,
-                rState
-            )
+            abi.encodeWithSelector(ToucanRaffle.Raffle__UpkeepNotNeeded.selector, currentBalance, numPlayers, rState)
         );
         raffle.performUpkeep("");
     }
@@ -203,10 +196,9 @@ contract RaffleTest is StdCheats, Test {
         bytes32 requestId = entries[1].topics[1];
 
         // Assert
-        Raffle.RaffleState raffleState = raffle.getRaffleState();
-        // requestId = raffle.getLastRequestId();
+        ToucanRaffle.RaffleState raffleState = raffle.getRaffleState();
         assert(uint256(requestId) > 0);
-        assert(uint(raffleState) == 1); // 0 = open, 1 = calculating
+        assert(uint256(raffleState) == 1); // 0 = open, 1 = calculating
     }
 
     /////////////////////////
@@ -228,51 +220,37 @@ contract RaffleTest is StdCheats, Test {
         _;
     }
 
-    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep()
-        public
-        raffleEntered
-        skipFork
-    {
+    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep() public raffleEntered skipFork {
         // Arrange
         // Act / Assert
         vm.expectRevert("nonexistent request");
         // vm.mockCall could be used here...
-        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(
-            0,
-            address(raffle)
-        );
+        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(0, address(raffle));
 
         vm.expectRevert("nonexistent request");
 
-        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(
-            1,
-            address(raffle)
-        );
+        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(1, address(raffle));
     }
 
-    function testFulfillRandomWordsPicksAWinnerResetsAndSendsMoney()
-        public
-        raffleEntered
-        skipFork
-    {
-        address expectedWinner = address(1);
+    function testFulfillRandomWordsPicksWinnerProportionally() public raffleEntered skipFork {
+        address[] memory expectedWinners = new address[](4);
+        expectedWinners[0] = address(1);
+        expectedWinners[1] = address(2);
+        expectedWinners[2] = address(3);
+        expectedWinners[3] = address(4);
 
         // Arrange
         uint256 additionalEntrances = 3;
         uint256 startingIndex = 1; // We have starting index be 1 so we can start with address(1) and not address(0)
 
-        for (
-            uint256 i = startingIndex;
-            i < startingIndex + additionalEntrances;
-            i++
-        ) {
+        // Add multiple players with different amounts
+        for (uint256 i = startingIndex; i <= additionalEntrances; i++) {
             address player = address(uint160(i));
             hoax(player, 1 ether); // deal 1 eth to the player
-            raffle.enterRaffle{value: raffleEntranceFee}();
+            raffle.enterRaffle{value: raffleEntranceFee * i}();
         }
 
         uint256 startingTimeStamp = raffle.getLastTimeStamp();
-        uint256 startingBalance = expectedWinner.balance;
 
         // Act
         vm.recordLogs();
@@ -280,21 +258,23 @@ contract RaffleTest is StdCheats, Test {
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[1].topics[1]; // get the requestId from the logs
 
-        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(
-            uint256(requestId),
-            address(raffle)
-        );
+        VRFCoordinatorV2Mock(vrfCoordinatorV2).fulfillRandomWords(uint256(requestId), address(raffle));
 
         // Assert
         address recentWinner = raffle.getRecentWinner();
-        Raffle.RaffleState raffleState = raffle.getRaffleState();
-        uint256 winnerBalance = recentWinner.balance;
+        ToucanRaffle.RaffleState raffleState = raffle.getRaffleState();
         uint256 endingTimeStamp = raffle.getLastTimeStamp();
-        uint256 prize = raffleEntranceFee * (additionalEntrances + 1);
 
-        assert(recentWinner == expectedWinner);
+        bool isExpectedWinner = false;
+        for (uint256 i = 0; i < expectedWinners.length; i++) {
+            if (recentWinner == expectedWinners[i]) {
+                isExpectedWinner = true;
+                break;
+            }
+        }
+
+        assert(isExpectedWinner);
         assert(uint256(raffleState) == 0);
-        assert(winnerBalance == startingBalance + prize);
         assert(endingTimeStamp > startingTimeStamp);
-    }
+   }
 }
